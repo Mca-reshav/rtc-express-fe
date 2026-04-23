@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Session } from "../models/session.model";
-import { v4 as uuidv4 } from "uuid";
+const { v4: uuidv4 } = require('uuid');
 
 export const createSession = async (req: Request, res: Response) => {
   const { user } = req.body;
