@@ -9,20 +9,34 @@ export const setupSocket = (io: Server) => {
     socket.on(eventObj.JOIN, async ({ sessionId, user }) => {
       socket.join(sessionId);
 
-      await Session.updateOne(
-        { sessionId },
-        {
-          $push: {
-            users: { ...user, socketId: socket.id, online: true },
-          },
-        }
-      );
+      const session = await Session.findOne({ sessionId });
 
-      io.to(sessionId).emit(passiveEventObj.JOINED, user);
+      if (!session) return;
+
+      const exists = session.users.find((u: any) => u.name === user.name);
+
+      if (!exists) {
+        session.users.push({
+          ...user,
+          socketId: socket.id,
+          online: true,
+        });
+      } else {
+        exists.online = true;
+        exists.socketId = socket.id;
+      }
+
+      await session.save();
+
+      io.to(sessionId).emit(passiveEventObj.PRESENCE, session.users);
+      io.to(sessionId).emit(passiveEventObj.RECEIVE, {
+        name: "System",
+        message: `${user.name} joined`,
+      });
     });
 
     //leave
-    socket.on(eventObj.LEAVE, async () => {
+    socket.on(eventObj.DISCONNECT, async () => {
       await Session.updateMany(
         { "users.socketId": socket.id },
         { $set: { "users.$.online": false } }
@@ -45,6 +59,20 @@ export const setupSocket = (io: Server) => {
       );
 
       socket.to(sessionId).emit(passiveEventObj.UPDATE, content);
+    });
+
+    socket.on(eventObj.LEAVE, async ({ sessionId, name }) => {
+      const session = await Session.findOne({ sessionId });
+      if (!session) return;
+      const user = session.users.find((u: any) => u.name === name);
+
+      if (user)  user.online = false;
+      await session.save();
+      io.to(sessionId).emit(passiveEventObj.PRESENCE, session.users);
+      io.to(sessionId).emit(passiveEventObj.RECEIVE, {
+        name: "System",
+        message: `${name} left the session`,
+      });
     });
   });
 };

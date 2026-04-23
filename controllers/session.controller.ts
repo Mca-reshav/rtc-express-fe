@@ -3,9 +3,15 @@ import { Session } from "../models/session.model";
 import { v4 as uuidv4 } from "uuid";
 
 export const createSession = async (req: Request, res: Response) => {
-  const sessionId = uuidv4(),
-    obj = { sessionId, users: [] },
-    session = await Session.create(obj);
+  const { user } = req.body;
+  if (!user || !user.name)
+    return res.status(400).json({ message: "User required" });
+
+  const sessionId = uuidv4();
+  const session = await Session.create({
+    sessionId,
+    users: [{ ...user, online: true }],
+  });
 
   res.json(session);
 };
