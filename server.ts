@@ -9,7 +9,7 @@ dotenv.config();
 connectDB();
 
 const server = http.createServer(app),
-  io = new Server(server, { cors: { origin: "*" } });
+  io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
 
 setupSocket(io);
 const PORT = process.env.PORT || 5000;
